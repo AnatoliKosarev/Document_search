@@ -2,9 +2,10 @@ package javatest.document_search.rest;
 
 import javatest.document_search.entity.Document;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.annotation.PostConstruct;
 import java.io.File;
@@ -22,22 +23,23 @@ public class DocumentRestController {
     private StringBuilder content;
     private Document document;
     private File folder;
+    private File[] files;
 
     // reading file names form local folder and adding them to documentIdList
     @PostConstruct
-    public void populateDocumentIdList() {
+    public void populateDocumentIdList() throws FileNotFoundException {
         documentIdList = new ArrayList<>();
         folder = new File(downloadPath);
-        String[] files = folder.list();
-        for (String s : files) {
-            documentIdList.add(removeFileExtension(s));
-        }
+        if (folder.exists()) {
+            files = folder.listFiles();
+            for (File file : files) {
+                documentIdList.add(removeFileExtension(file.getName()));
+            }
+        } else {throw new FileNotFoundException("Wrong download path: " + downloadPath);}
     }
 
     // reading file name and content
-    public Document getDocumentNameContent(String queryDocumentName) throws FileNotFoundException {
-        folder = new File(downloadPath);
-        File[] files = folder.listFiles();
+    public Document getDocumentNameContent(String queryDocumentName) {
         content = new StringBuilder();
 
         for (File file : files) {
@@ -46,7 +48,12 @@ public class DocumentRestController {
             // check file name - if it = to query file - read file line by line and save to StringBuilder
             if(removeFileExtension(fileName).equals(queryDocumentName)) {
                 // 1 variant
-                Scanner scanner = new Scanner(file);
+                Scanner scanner = null;
+                try {
+                    scanner = new Scanner(file);
+                } catch (FileNotFoundException e) {
+                    e.printStackTrace();
+                }
                 while (scanner.hasNextLine()) {
                     content.append(scanner.nextLine());
                 }
@@ -75,20 +82,6 @@ public class DocumentRestController {
     public String removeFileExtension(String fileName) {
         String fileNameWithoutExtension = fileName.replaceFirst("[.][^.]+$", "");
         return fileNameWithoutExtension;
-    }
-
-    // exception handler method with DocumentErrorResponse type of the response body, handling/catching DocumentNotFoundException
-    @ExceptionHandler
-    public ResponseEntity<DocumentErrorResponse> handleException(DocumentNotFoundException exc) {
-        // create DocumentErrorResponse
-        DocumentErrorResponse error = new DocumentErrorResponse();
-
-        error.setStatus(HttpStatus.NOT_FOUND.value());
-        error.setMessage(exc.getMessage());
-        error.setTimeStamp(System.currentTimeMillis());
-
-        // return ResponseEntity with DocumentErrorResponse error as body and HTTP status
-        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
     // endpoint to return all documents from local folder
