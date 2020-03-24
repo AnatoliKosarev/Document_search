@@ -1,7 +1,5 @@
 package javatest.document_search.exception_handler;
 
-import javatest.document_search.rest.DocumentErrorResponse;
-import javatest.document_search.rest.DocumentNotFoundException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;

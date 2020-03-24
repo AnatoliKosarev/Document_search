@@ -1,6 +1,7 @@
 package javatest.document_search.rest;
 
 import javatest.document_search.entity.Document;
+import javatest.document_search.exception_handler.DocumentNotFoundException;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -92,7 +93,7 @@ public class DocumentRestController {
 
     // endpoint to return document by name
     @GetMapping("/documents/{documentName}")
-    public Document getDocumentByName(@PathVariable String documentName) throws FileNotFoundException {
+    public Document getDocumentByName(@PathVariable String documentName) {
         return getDocumentNameContent(documentName);
     }
 }

@@ -1,4 +1,4 @@
-package javatest.document_search.rest;
+package javatest.document_search.exception_handler;
 
 public class DocumentErrorResponse {
 
