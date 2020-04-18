@@ -8,7 +8,12 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 @ControllerAdvice
 public class DocumentSearchExceptionHandler {
 
-    // exception handler method with DocumentErrorResponse type of the response body, handling/catching DocumentNotFoundException
+    /**
+     * exception handler method with DocumentErrorResponse type of the response body,
+     * handling/catching DocumentNotFoundException
+     * @param exc caught exception of DocumentNotFoundException type
+     * @return ResponseEntity with DocumentErrorResponse error as body and HTTP status
+     */
     @ExceptionHandler
     public ResponseEntity<DocumentErrorResponse> handleException(DocumentNotFoundException exc) {
         // create DocumentErrorResponse
@@ -18,11 +23,15 @@ public class DocumentSearchExceptionHandler {
         error.setMessage(exc.getMessage());
         error.setTimeStamp(System.currentTimeMillis());
 
-        // return ResponseEntity with DocumentErrorResponse error as body and HTTP status
         return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-    // exception handler method with DocumentErrorResponse type of the response body, handling/catching generic Exception
+    /**
+     * exception handler method with DocumentErrorResponse type of the response body,
+     * handling/catching generic Exception
+     * @param exc caught exception of Exception type
+     * @return ResponseEntity with DocumentErrorResponse error as body and HTTP status
+     */
     @ExceptionHandler
     public ResponseEntity<DocumentErrorResponse> handleException(Exception exc) {
         // create DocumentErrorResponse
@@ -32,7 +41,6 @@ public class DocumentSearchExceptionHandler {
         error.setMessage(exc.getMessage());
         error.setTimeStamp(System.currentTimeMillis());
 
-        // return ResponseEntity with DocumentErrorResponse error as body and HTTP status
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 }
