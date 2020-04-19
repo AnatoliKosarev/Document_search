@@ -11,7 +11,7 @@ import java.io.FileNotFoundException;
 import java.util.*;
 
 @Component
-public class DocumentService implements DocumentServiceInterface{
+public class DocumentService implements DocumentServiceInterface {
     @Value("${localDownload.path}")
     private String downloadPath;
     private File folder;
@@ -24,6 +24,7 @@ public class DocumentService implements DocumentServiceInterface{
 
     /**
      * returns the array of files from local repository
+     *
      * @throws FileNotFoundException if folder is not found
      */
     @PostConstruct
@@ -37,6 +38,7 @@ public class DocumentService implements DocumentServiceInterface{
 
     /**
      * reads file content
+     *
      * @param file file which needs to be read
      * @return file content as StringBuilder
      */
@@ -65,6 +67,7 @@ public class DocumentService implements DocumentServiceInterface{
 
     /**
      * removes extensions from file names
+     *
      * @param fileName file name for which extension needs to be removed
      * @return file name without extension as String
      */
@@ -75,6 +78,7 @@ public class DocumentService implements DocumentServiceInterface{
 
     /**
      * reads file names form local folder and adds them to documentIdList
+     *
      * @return documentIdList with added file names form local folder as List<String>
      */
     @Override
@@ -88,6 +92,7 @@ public class DocumentService implements DocumentServiceInterface{
 
     /**
      * reads and returns query file name and its' content
+     *
      * @param queryDocumentName name of a file which name and content needs to be read
      * @return Document entity of read file
      */
@@ -98,11 +103,11 @@ public class DocumentService implements DocumentServiceInterface{
             // get file name from file list
             fileName = file.getName();
             // check file name - if it = to query file - read file line by line and save to StringBuilder
-            if(removeFileExtension(fileName).equals(queryDocumentName)) {
+            if (removeFileExtension(fileName).equals(queryDocumentName)) {
                 readFileContent(file);
                 break;
                 // check if it's the last file in array and no content was returned - throw DocumentNotFoundException
-            } else if (file == filesList[filesList.length-1]) {
+            } else if (file == filesList[filesList.length - 1]) {
                 throw new DocumentNotFoundException("Document not found:" + queryDocumentName);
             }
         }
@@ -113,8 +118,9 @@ public class DocumentService implements DocumentServiceInterface{
 
     /**
      * populates map list with document name and number of matches of key phrase in it
-     * @param map map list that needs to be populated with data
-     * @param fileName name of the file in which query by key phrase is performed
+     *
+     * @param map         map list that needs to be populated with data
+     * @param fileName    name of the file in which query by key phrase is performed
      * @param matchNumber match coefficient = number of words in ngram squared
      * @return map list populated with query file data as TreeMap<String, Integer>
      */
@@ -134,8 +140,9 @@ public class DocumentService implements DocumentServiceInterface{
 
     /**
      * returns list of ngrams of certain length from key phrase
+     *
      * @param ngramLength number of words in ngram
-     * @param keyPhrase key phrase from which ngram is created
+     * @param keyPhrase   key phrase from which ngram is created
      * @return list of created ngrams of certain length as List<String>
      */
     public List<String> getNgramList(int ngramLength, String keyPhrase) {
@@ -145,19 +152,20 @@ public class DocumentService implements DocumentServiceInterface{
         // iterate the number of times = ngram quantity in key phrase
         for (int i = 0; i <= splitKeyPhrase.length - ngramLength; i++) {
             // add ngram to ngramList evoking concatinate method which returns ngram string
-            ngramList.add(concatNgram(splitKeyPhrase, i, i+ngramLength));
+            ngramList.add(concatNgram(splitKeyPhrase, i, i + ngramLength));
         }
         return ngramList;
     }
 
     /**
      * returns ngram string of certain length within start and end index from key phrase string array
+     *
      * @param splitKeyPhrase key phrase split by spaces as String[]
-     * @param start index of key phrase array from which ngram starts
-     * @param end  index of key phrase array before which ngram ends
+     * @param start          index of key phrase array from which ngram starts
+     * @param end            index of key phrase array before which ngram ends
      * @return created ngram as String
      */
-    private String concatNgram(String[] splitKeyPhrase, int start, int end ) {
+    private String concatNgram(String[] splitKeyPhrase, int start, int end) {
         StringBuilder ngramStringBuilder = new StringBuilder();
         // iterate the number of times = to passed start and end key phrase array length
         for (int i = start; i < end; i++) {
@@ -173,6 +181,7 @@ public class DocumentService implements DocumentServiceInterface{
      * the list is sorted by match index with DESC order from the highest to the lowest index of matches found
      * match index equals the squared length of a key phrase or part of a key phrase (ngram) found
      * such sorting rules ensures that the more accurate is the match to a key phrase - the larger the index such match gets
+     *
      * @param keyPhrase query key phrase entered by user
      * @return list of sorted by DESC match occurrences document ids as ArrayList()
      */

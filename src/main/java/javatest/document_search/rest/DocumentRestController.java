@@ -24,15 +24,17 @@ public class DocumentRestController {
 
     /**
      * displays list of all document ids from storage
+     *
      * @return documentIdList with added file names as List<String>
      */
     @GetMapping("/documents")
     public List<String> showAllDocuments() {
-            return documentService.getDocumentIdList();
+        return documentService.getDocumentIdList();
     }
 
     /**
      * displays query document id and its' content
+     *
      * @param documentName query document id entered by a user
      * @return Document entity with query document id and its' content
      */
@@ -43,6 +45,7 @@ public class DocumentRestController {
 
     /**
      * displays list of document ids sorted by key phrase occurrences found in document
+     *
      * @param keyPhrase query search phrase entered by a user
      * @return list of document ids sorted by key phrase occurrences found in document
      */

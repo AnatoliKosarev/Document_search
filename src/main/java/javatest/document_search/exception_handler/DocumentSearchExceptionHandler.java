@@ -11,6 +11,7 @@ public class DocumentSearchExceptionHandler {
     /**
      * exception handler method with DocumentErrorResponse type of the response body,
      * handling/catching DocumentNotFoundException
+     *
      * @param exc caught exception of DocumentNotFoundException type
      * @return ResponseEntity with DocumentErrorResponse error as body and HTTP status
      */
@@ -29,6 +30,7 @@ public class DocumentSearchExceptionHandler {
     /**
      * exception handler method with DocumentErrorResponse type of the response body,
      * handling/catching generic Exception
+     *
      * @param exc caught exception of Exception type
      * @return ResponseEntity with DocumentErrorResponse error as body and HTTP status
      */

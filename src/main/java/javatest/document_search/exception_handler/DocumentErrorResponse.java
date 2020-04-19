@@ -6,7 +6,8 @@ public class DocumentErrorResponse {
     private String message;
     private long timeStamp;
 
-    public DocumentErrorResponse() {}
+    public DocumentErrorResponse() {
+    }
 
     public DocumentErrorResponse(int status, String message, long timestamp) {
         this.status = status;
