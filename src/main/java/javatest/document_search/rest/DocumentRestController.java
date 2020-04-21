@@ -1,26 +1,24 @@
 package javatest.document_search.rest;
 
 import javatest.document_search.entity.Document;
-import javatest.document_search.services.DocumentService;
 import javatest.document_search.services.DocumentServiceInterface;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-import javax.annotation.PostConstruct;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.util.*;
+import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/")
 public class DocumentRestController {
 
-    /**
-     * creates DocumentServiceInterface entity containing methods for endpoints
-     */
-    @Autowired
-    DocumentServiceInterface documentService;
+    private final DocumentServiceInterface documentService;
+
+    public DocumentRestController(DocumentServiceInterface documentService) {
+        this.documentService = documentService;
+    }
 
     /**
      * displays list of all document ids from storage
@@ -50,9 +48,7 @@ public class DocumentRestController {
      * @return list of document ids sorted by key phrase occurrences found in document
      */
     @GetMapping("/document_search/{keyPhrase}")
-    public List showDocumentsByKeyPhrase(@PathVariable String keyPhrase) {
+    public List<Map.Entry<String, Integer>> showDocumentsByKeyPhrase(@PathVariable String keyPhrase) {
         return documentService.getDocumentsByKeyPhrase(keyPhrase);
     }
 }
-
-
