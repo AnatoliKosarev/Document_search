@@ -8,13 +8,17 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.*;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Component
 public class DocumentService implements DocumentServiceInterface {
     @Value("${localDownload.path}")
     private String downloadPath;
-    private String fileName;
     private StringBuilder content;
     private File[] filesList;
 
@@ -32,26 +36,13 @@ public class DocumentService implements DocumentServiceInterface {
     //reads and saves file content
     private void readFileContent(File file) {
         content = new StringBuilder();
-        // 1 variant
-        Scanner scanner = null;
-        try {
-            scanner = new Scanner(file);
-        } catch (FileNotFoundException e) {
+
+        try (Stream<String> stream = Files.lines(Paths.get(file.getPath()))) {
+            stream.forEach(s -> content.append(s));
+
+        } catch (IOException e) {
             e.printStackTrace();
         }
-        while (true) {
-            assert scanner != null;
-            if (!scanner.hasNextLine()) break;
-            content.append(scanner.nextLine());
-        }
-        scanner.close();
-//         2 variant
-//      try (Stream<String> stream = Files.lines( Paths.get(file.getPath()))) {
-//          stream.forEach(s -> content.append(s));
-//
-//       } catch (IOException e) {
-//          e.printStackTrace();
-//       }
     }
 
     //removes extensions from file names
@@ -61,28 +52,25 @@ public class DocumentService implements DocumentServiceInterface {
 
     @Override
     public List<String> getDocumentIdList() {
-        List<String> documentIdList = new ArrayList<>();
-        for (File file : filesList) {
-            documentIdList.add(removeFileExtension(file.getName()));
-        }
-        return documentIdList;
+        return Arrays.stream(filesList)
+                .map(file -> removeFileExtension(file.getName()))
+                .collect(Collectors.toList());
     }
 
     @Override
     public Document getDocumentNameContent(String queryDocumentName) {
         content = new StringBuilder();
-        for (File file : filesList) {
-            // get file name from file list
-            fileName = file.getName();
-            // check file name - if it = to query file - read file line by line and save to StringBuilder
-            if (removeFileExtension(fileName).equals(queryDocumentName)) {
-                readFileContent(file);
-                break;
-                // check if it's the last file in array and no content was returned - throw DocumentNotFoundException
-            } else if (file == filesList[filesList.length - 1]) {
-                throw new DocumentNotFoundException("Document not found:" + queryDocumentName);
-            }
-        }
+
+        boolean fileExists = Arrays.stream(filesList).
+                anyMatch(file -> removeFileExtension(file.getName()).equals(queryDocumentName));
+
+        if (fileExists)
+            Arrays.stream(filesList)
+                    .filter(file -> removeFileExtension(file.getName()).equals(queryDocumentName))
+                    .forEach(this::readFileContent);
+        else
+            throw new DocumentNotFoundException("Document not found: " + queryDocumentName);
+
         // returns new Document object with mandatory parameters, changing content type from StringBuilder to String
         return new Document(queryDocumentName, content.toString());
     }
@@ -134,7 +122,7 @@ public class DocumentService implements DocumentServiceInterface {
 
         for (File file : filesList) {
             // get file name without extension
-            fileName = removeFileExtension(file.getName());
+            String fileName = removeFileExtension(file.getName());
             readFileContent(file);
             // iterate the number of times = number of words in key phrase
             for (int i = 1; i <= splitKeyPhrase.length; i++) {
