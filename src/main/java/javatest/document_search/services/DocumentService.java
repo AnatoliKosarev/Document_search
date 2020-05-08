@@ -13,36 +13,86 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 @Component
 public class DocumentService implements DocumentServiceInterface {
     @Value("${localDownload.path}")
     private String downloadPath;
-    private StringBuilder content;
-    private File[] filesList;
+    private List<File> filesList;
 
+    @Override
+    public List<String> getDocumentIdList() {
+        return filesList.stream()
+                .map(file -> removeFileExtension(file.getName()))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public Document getDocumentNameContent(String queryDocumentName) {
+        String content = filesList.stream()
+                .filter(file -> removeFileExtension(file.getName()).equals(queryDocumentName))
+                .map(this::readFileContent)
+                .findAny()
+                .map(Object::toString)
+                .orElse(null);
+
+        if (content == null)
+            throw new DocumentNotFoundException("Document not found: " + queryDocumentName);
+
+        return new Document(queryDocumentName, content);
+    }
+
+    @Override
+    public List<Map.Entry<String, Integer>> getDocumentsByKeyPhrase(String keyPhrase) {
+        TreeMap<String, Integer> map = new TreeMap<>();
+        String content;
+        String[] splitKeyPhrase = keyPhrase.split(" ");
+
+        for (File file : filesList) {
+            String fileName = removeFileExtension(file.getName());
+            content = readFileContent(file).toString();
+            for (int ngramLength = 1; ngramLength <= splitKeyPhrase.length; ngramLength++) {
+                for (String ngram : getNgramList(ngramLength, splitKeyPhrase)) {
+                    int startIndex = 0;
+                    if (!ngramFound(content, ngram, startIndex))
+                        continue;
+                    while (ngramFound(content, ngram, startIndex)) {
+                        populateMapWithDocumentMatchData(map, fileName, ngramLength * ngramLength);
+                        startIndex = content.indexOf(ngram, startIndex) + ngram.length();
+                    }
+                }
+            }
+            if (file == filesList.get(filesList.size() - 1) && map.isEmpty())
+                throw new DocumentNotFoundException("Searched key phrase not found:" + keyPhrase);
+        }
+        List<Map.Entry<String, Integer>> list = new ArrayList<>(map.entrySet());
+        list.sort((o1, o2) -> o2.getValue() - o1.getValue());
+        return list;
+    }
 
     //returns the array of files from local repository
     @PostConstruct
     private void getLocalFilesList() throws FileNotFoundException {
         File folder = new File(downloadPath);
-        if (folder.exists()) {
-            filesList = folder.listFiles();
-        } else
+        if (folder.exists())
+            filesList = Arrays.asList(Objects.requireNonNull(folder.listFiles()));
+        else
             throw new FileNotFoundException("Wrong download path: " + downloadPath);
     }
 
     //reads and saves file content
-    private void readFileContent(File file) {
-        content = new StringBuilder();
+    private StringBuilder readFileContent(File file) {
+        StringBuilder content = new StringBuilder();
 
         try (Stream<String> stream = Files.lines(Paths.get(file.getPath()))) {
-            stream.forEach(s -> content.append(s));
+            stream.forEach(content::append);
 
         } catch (IOException e) {
             e.printStackTrace();
         }
+        return content;
     }
 
     //removes extensions from file names
@@ -50,108 +100,37 @@ public class DocumentService implements DocumentServiceInterface {
         return fileName.replaceFirst("[.][^.]+$", "");
     }
 
-    @Override
-    public List<String> getDocumentIdList() {
-        return Arrays.stream(filesList)
-                .map(file -> removeFileExtension(file.getName()))
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    public Document getDocumentNameContent(String queryDocumentName) {
-        content = new StringBuilder();
-
-        boolean fileExists = Arrays.stream(filesList).
-                anyMatch(file -> removeFileExtension(file.getName()).equals(queryDocumentName));
-
-        if (fileExists)
-            Arrays.stream(filesList)
-                    .filter(file -> removeFileExtension(file.getName()).equals(queryDocumentName))
-                    .forEach(this::readFileContent);
-        else
-            throw new DocumentNotFoundException("Document not found: " + queryDocumentName);
-
-        // returns new Document object with mandatory parameters, changing content type from StringBuilder to String
-        return new Document(queryDocumentName, content.toString());
-    }
-
     //populates map list with document name and number of matches of key phrase in it
     private void populateMapWithDocumentMatchData(TreeMap<String, Integer> map,
                                                   String fileName, int matchNumber) {
         // if map list already contains current file
-        if (map.containsKey(fileName)) {
+        if (map.containsKey(fileName))
             // add number of matches for current file
             map.put(fileName, map.get(fileName) + matchNumber);
             // if map list doesn't contain data for current file -
             // add file key and match number
-        } else {
+        else
             map.put(fileName, matchNumber);
-        }
     }
 
     //returns list of ngrams of certain length from key phrase
-    private List<String> getNgramList(int ngramLength, String keyPhrase) {
-        List<String> ngramList = new ArrayList<>();
-        // split key phrase by spaces
-        String[] splitKeyPhrase = keyPhrase.split(" ");
-        // iterate the number of times = ngram quantity in key phrase
-        for (int i = 0; i <= splitKeyPhrase.length - ngramLength; i++) {
-            // add ngram to ngramList evoking concatinate method which returns ngram string
-            ngramList.add(concatNgram(splitKeyPhrase, i, i + ngramLength));
-        }
-        return ngramList;
+    private List<String> getNgramList(int ngramLength, String[] splitKeyPhrase) {
+
+        return IntStream.range(0, splitKeyPhrase.length - ngramLength + 1)
+                .mapToObj(index -> concatNgram(splitKeyPhrase, index, index + ngramLength))
+                .collect(Collectors.toList());
     }
 
     //returns ngram string of certain length within start and end index from key phrase string array
-    private String concatNgram(String[] splitKeyPhrase, int start, int end) {
-        StringBuilder ngramStringBuilder = new StringBuilder();
-        // iterate the number of times = to passed start and end key phrase array length
-        for (int i = start; i < end; i++) {
-            // concatinate ngram with check -  if it's a starting string in ngram - no space before it,
-            // otherwise - space before
-            ngramStringBuilder.append(i > start ? " " : "").append(splitKeyPhrase[i]);
-        }
-        return ngramStringBuilder.toString();
+    private String concatNgram(String[] splitKeyPhrase, int startIndex, int endIndex) {
+
+        return Arrays.stream(splitKeyPhrase, startIndex, endIndex)
+                .collect(Collectors.joining(" "));
     }
 
-    @Override
-    public List<Map.Entry<String, Integer>> getDocumentsByKeyPhrase(String keyPhrase) {
-        TreeMap<String, Integer> map = new TreeMap<>();
-        content = new StringBuilder();
-        String[] splitKeyPhrase = keyPhrase.split(" ");
+    //returns true if ngram found, false if ngram not found
+    private boolean ngramFound(String content, String ngram, int startIndex) {
 
-        for (File file : filesList) {
-            // get file name without extension
-            String fileName = removeFileExtension(file.getName());
-            readFileContent(file);
-            // iterate the number of times = number of words in key phrase
-            for (int i = 1; i <= splitKeyPhrase.length; i++) {
-                // iterate within returned ngram list
-                for (String ngram : getNgramList(i, keyPhrase)) {
-                    int startIndex = 0;
-                    // if ngram not found in file - iterate to the next ngram
-                    // indexOf() returns the index of the first occurrence of ngram in file or "-1" if ngram is not found
-                    if (content.toString().indexOf(ngram, startIndex) == -1) {
-                        continue;
-                    }
-                    // while file contains values = ngram, search performed starting from indexed character
-                    while (content.toString().indexOf(ngram, startIndex) != -1) {
-                        // add filename and match index according to ngram length to map list
-                        populateMapWithDocumentMatchData(map, fileName, i * i);
-                        // increase index value by found ngram length
-                        startIndex = content.toString().indexOf(ngram, startIndex) + ngram.length();
-                    }
-                }
-            }
-            // if it's the last file and map list is empty - throw custom exception
-            if (file == filesList[filesList.length - 1] && map.isEmpty()) {
-                throw new DocumentNotFoundException("Searched key phrase not found:" + keyPhrase);
-            }
-        }
-        //add map data to array list
-        List<Map.Entry<String, Integer>> list = new ArrayList<>(map.entrySet());
-        //sort array list in reverse natural order (DESC)
-        list.sort((o1, o2) -> o2.getValue() - o1.getValue());
-        return list;
+        return content.indexOf(ngram, startIndex) != -1;
     }
 }
