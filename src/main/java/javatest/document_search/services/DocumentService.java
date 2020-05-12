@@ -20,10 +20,11 @@ import java.util.stream.Stream;
 
 @Component
 public class DocumentService implements DocumentServiceInterface {
+    private final Logger log = LoggerFactory.getLogger(this.getClass());
+
     @Value("${localDownload.path}")
     private String downloadPath;
     private List<File> filesList;
-    Logger log = LoggerFactory.getLogger(this.getClass());
 
     //returns the array of files from local repository
     @PostConstruct
@@ -60,7 +61,7 @@ public class DocumentService implements DocumentServiceInterface {
         else if (content.get().length() == 0)
             throw new DocumentNotFoundException("Document is empty: " + queryDocumentName);
 
-        return new Document(queryDocumentName, content.get());
+        return Document.builder().documentName(queryDocumentName).documentContent(content.get()).build();
     }
 
     @Override
@@ -87,9 +88,9 @@ public class DocumentService implements DocumentServiceInterface {
                 throw new DocumentNotFoundException("Searched key phrase not found:" + keyPhrase);
         }
 
-        List<Map.Entry<String, Integer>> list = new ArrayList<>(map.entrySet());
-        list.sort((o1, o2) -> o2.getValue() - o1.getValue());
-        return list;
+        return map.entrySet().stream()
+                .sorted(Map.Entry.comparingByValue(Comparator.reverseOrder()))
+                .collect(Collectors.toList());
     }
 
     //reads and saves file content
