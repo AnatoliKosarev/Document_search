@@ -2,6 +2,8 @@ package javatest.document_search.services;
 
 import javatest.document_search.entity.Document;
 import javatest.document_search.exception_handler.DocumentNotFoundException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -21,6 +23,22 @@ public class DocumentService implements DocumentServiceInterface {
     @Value("${localDownload.path}")
     private String downloadPath;
     private List<File> filesList;
+    Logger log = LoggerFactory.getLogger(this.getClass());
+
+    //returns the array of files from local repository
+    @PostConstruct
+    private void getLocalFilesList() throws FileNotFoundException {
+        File folder = new File(downloadPath);
+        File[] files = folder.listFiles();
+
+        if (!folder.exists())
+            throw new FileNotFoundException("Wrong download path: " + downloadPath);
+
+        if (files != null && files.length != 0)
+            filesList = Arrays.asList(files);
+        else
+            throw new FileNotFoundException(downloadPath + " folder exists but no documents where found");
+    }
 
     @Override
     public List<String> getDocumentIdList() {
@@ -31,22 +49,23 @@ public class DocumentService implements DocumentServiceInterface {
 
     @Override
     public Document getDocumentNameContent(String queryDocumentName) {
-        String content = filesList.stream()
+        Optional<String> content = filesList.stream()
                 .filter(file -> removeFileExtension(file.getName()).equals(queryDocumentName))
                 .map(this::readFileContent)
                 .findAny()
-                .map(Object::toString)
-                .orElse(null);
+                .map(Object::toString);
 
-        if (content == null)
+        if (!content.isPresent())
             throw new DocumentNotFoundException("Document not found: " + queryDocumentName);
+        else if (content.get().length() == 0)
+            throw new DocumentNotFoundException("Document is empty: " + queryDocumentName);
 
-        return new Document(queryDocumentName, content);
+        return new Document(queryDocumentName, content.get());
     }
 
     @Override
     public List<Map.Entry<String, Integer>> getDocumentsByKeyPhrase(String keyPhrase) {
-        TreeMap<String, Integer> map = new TreeMap<>();
+        HashMap<String, Integer> map = new HashMap<>();
         String content;
         String[] splitKeyPhrase = keyPhrase.split(" ");
 
@@ -67,19 +86,10 @@ public class DocumentService implements DocumentServiceInterface {
             if (file == filesList.get(filesList.size() - 1) && map.isEmpty())
                 throw new DocumentNotFoundException("Searched key phrase not found:" + keyPhrase);
         }
+
         List<Map.Entry<String, Integer>> list = new ArrayList<>(map.entrySet());
         list.sort((o1, o2) -> o2.getValue() - o1.getValue());
         return list;
-    }
-
-    //returns the array of files from local repository
-    @PostConstruct
-    private void getLocalFilesList() throws FileNotFoundException {
-        File folder = new File(downloadPath);
-        if (folder.exists())
-            filesList = Arrays.asList(Objects.requireNonNull(folder.listFiles()));
-        else
-            throw new FileNotFoundException("Wrong download path: " + downloadPath);
     }
 
     //reads and saves file content
@@ -88,10 +98,11 @@ public class DocumentService implements DocumentServiceInterface {
 
         try (Stream<String> stream = Files.lines(Paths.get(file.getPath()))) {
             stream.forEach(content::append);
-
         } catch (IOException e) {
-            e.printStackTrace();
+            log.error("Error occurred in readFileContent method while reading file "
+                    + file.getName() + " content", e);
         }
+
         return content;
     }
 
@@ -101,7 +112,7 @@ public class DocumentService implements DocumentServiceInterface {
     }
 
     //populates map list with document name and number of matches of key phrase in it
-    private void populateMapWithDocumentMatchData(TreeMap<String, Integer> map,
+    private void populateMapWithDocumentMatchData(HashMap<String, Integer> map,
                                                   String fileName, int matchNumber) {
         // if map list already contains current file
         if (map.containsKey(fileName))

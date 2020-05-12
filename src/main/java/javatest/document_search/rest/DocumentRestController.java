@@ -2,16 +2,16 @@ package javatest.document_search.rest;
 
 import javatest.document_search.entity.Document;
 import javatest.document_search.services.DocumentServiceInterface;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
+import javax.validation.constraints.Pattern;
 import java.util.List;
 import java.util.Map;
 
 @RestController
 @RequestMapping("/")
+@Validated
 public class DocumentRestController {
 
     private final DocumentServiceInterface documentService;
@@ -37,7 +37,9 @@ public class DocumentRestController {
      * @return Document entity with query document id and its' content
      */
     @GetMapping("/documents/{documentName}")
-    public Document showDocumentByName(@PathVariable String documentName) {
+    public Document showDocumentByName(@PathVariable @Pattern(regexp = "^doc \\([0-9]+\\)$",
+            message = "Document name path variable must have the following format: doc (Number)")
+                                               String documentName) {
         return documentService.getDocumentNameContent(documentName);
     }
 
