@@ -2,6 +2,8 @@ package javatest.document_search.rest;
 
 import javatest.document_search.entity.Document;
 import javatest.document_search.services.DocumentServiceInterface;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -14,7 +16,6 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/")
-@Validated
 public class DocumentRestController {
 
     static final String validationMessage = "Document name path variable must have the following format: doc (Number)";
@@ -31,8 +32,8 @@ public class DocumentRestController {
      * @return documentIdList with added file names as List<String>
      */
     @GetMapping("/documents")
-    public List<String> showAllDocuments() {
-        return documentService.getDocumentIdList();
+    public ResponseEntity<List<String>> showAllDocuments() {
+        return ResponseEntity.ok(documentService.getDocumentIdList());
     }
 
     /**
@@ -41,10 +42,11 @@ public class DocumentRestController {
      * @param documentName query document id entered by a user
      * @return Document entity with query document id and its' content
      */
+    @Validated
     @GetMapping("/documents/{documentName}")
-    public Document showDocumentByName(@PathVariable @Pattern(regexp = "^doc \\([0-9]+\\)$",
+    public ResponseEntity<Document> showDocumentByName(@PathVariable @Pattern(regexp = "^doc \\([0-9]+\\)$",
             message = validationMessage) String documentName) {
-        return documentService.getDocumentNameContent(documentName);
+        return ResponseEntity.ok(documentService.getDocumentNameContent(documentName));
     }
 
     /**
@@ -54,7 +56,7 @@ public class DocumentRestController {
      * @return list of document ids sorted by key phrase occurrences found in document
      */
     @GetMapping("/document_search/{keyPhrase}")
-    public List<Map.Entry<String, Integer>> showDocumentsByKeyPhrase(@PathVariable String keyPhrase) {
-        return documentService.getDocumentsByKeyPhrase(keyPhrase);
+    public ResponseEntity<List<Map.Entry<String, Integer>>> showDocumentsByKeyPhrase(@PathVariable String keyPhrase) {
+        return ResponseEntity.ok(documentService.getDocumentsByKeyPhrase(keyPhrase));
     }
 }
