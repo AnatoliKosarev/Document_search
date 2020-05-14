@@ -13,9 +13,4 @@ public class Document {
 
     private String documentName;
     private String documentContent;
-
-    public Document(String documentName, String documentContent) {
-        this.documentName = documentName;
-        this.documentContent = documentContent;
-    }
 }

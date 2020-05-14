@@ -61,7 +61,10 @@ public class DocumentService implements DocumentServiceInterface {
         else if (content.get().length() == 0)
             throw new DocumentNotFoundException("Document is empty: " + queryDocumentName);
 
-        return Document.builder().documentName(queryDocumentName).documentContent(content.get()).build();
+        return Document.builder()
+                .documentName(queryDocumentName)
+                .documentContent(content.get())
+                .build();
     }
 
     @Override

@@ -2,7 +2,6 @@ package javatest.document_search.rest;
 
 import javatest.document_search.entity.Document;
 import javatest.document_search.services.DocumentServiceInterface;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,7 +17,7 @@ import java.util.Map;
 @RequestMapping("/")
 public class DocumentRestController {
 
-    static final String validationMessage = "Document name path variable must have the following format: doc (Number)";
+    private static final String VALIDATION_MESSAGE = "Document name path variable must have the following format: doc (Number)";
 
     private final DocumentServiceInterface documentService;
 
@@ -45,7 +44,7 @@ public class DocumentRestController {
     @Validated
     @GetMapping("/documents/{documentName}")
     public ResponseEntity<Document> showDocumentByName(@PathVariable @Pattern(regexp = "^doc \\([0-9]+\\)$",
-            message = validationMessage) String documentName) {
+            message = VALIDATION_MESSAGE) String documentName) {
         return ResponseEntity.ok(documentService.getDocumentNameContent(documentName));
     }
 
