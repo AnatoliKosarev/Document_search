@@ -11,6 +11,11 @@ import lombok.Setter;
 @Builder
 public class Document {
 
+    public Document(String documentName, String documentContent) {
+        this.documentName = documentName;
+        this.documentContent = documentContent;
+    }
+
     private String documentName;
     private String documentContent;
 }
