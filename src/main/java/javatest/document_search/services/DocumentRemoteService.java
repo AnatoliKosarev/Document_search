@@ -1,57 +1,89 @@
 package javatest.document_search.services;
 
+import com.google.api.client.http.GenericUrl;
+import com.google.api.client.http.HttpResponse;
+import com.google.api.services.drive.Drive;
+import com.google.api.services.drive.Drive.Files;
+import com.google.api.services.drive.model.File;
+import com.google.api.services.drive.model.FileList;
 import javatest.document_search.entity.Document;
 import javatest.document_search.exception_handler.DocumentNotFoundException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.io.InputStream;
+import java.security.GeneralSecurityException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
-import java.util.stream.Stream;
 
 @Component
-public class DocumentService implements DocumentServiceInterface {
-    private final Logger log = LoggerFactory.getLogger(this.getClass());
-
-    @Value("${localDownload.path}")
-    private String downloadPath;
+@Profile("remote")
+public class DocumentRemoteService implements DocumentServiceInterface {
     private List<File> filesList;
+    private Drive service;
 
-    //returns the array of files from local repository
     @PostConstruct
-    private void getLocalFilesList() throws FileNotFoundException {
-        File folder = new File(downloadPath);
-        File[] files = folder.listFiles();
+    public void getRemoteFilesList() throws IOException, GeneralSecurityException {
 
-        if (!folder.exists())
-            throw new FileNotFoundException("Wrong download path: " + downloadPath);
+        RemoteSearchAuthentication remoteSearchAuthentication = new RemoteSearchAuthentication();
+        service = remoteSearchAuthentication.authenticateUser();
+        filesList = new ArrayList<>();
+        Files.List request = service.files().list()
+                .setQ("'1Hk41UAJGgpV3IhrQoncShnbjmRbNlsOJ' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false");
 
-        if (files != null && files.length != 0)
-            filesList = Arrays.asList(files);
-        else
-            throw new FileNotFoundException(downloadPath + " folder exists but no documents where found");
+        do {
+            try {
+                FileList files = request.execute();
+
+                filesList.addAll(files.getItems());
+                request.setPageToken(files.getNextPageToken());
+            } catch (IOException e) {
+                System.out.println("An error occurred: " + e);
+                request.setPageToken(null);
+            }
+        } while (request.getPageToken() != null &&
+                request.getPageToken().length() > 0);
+
     }
+
+//        Drive.Files.List request = service
+//                .files()
+//                .list()
+//                .setQ("'1Hk41UAJGgpV3IhrQoncShnbjmRbNlsOJ' in parents and mimeType != 'application/vnd.google-apps.folder' and trashed = false")
+//                .setSpaces("drive")
+//                .setFields("nextPageToken, files(id, name, parents)");
+//
+//        do {
+//            try {
+//                FileList files = request.execute();
+//
+//                filesList.addAll(files.getFiles());
+//                request.setPageToken(files.getNextPageToken());
+//            } catch (IOException e) {
+//                System.out.println("An error occurred: " + e);
+//                request.setPageToken(null);
+//            }
+//        } while (request.getPageToken() != null &&
+//                request.getPageToken().length() > 0);
+//
+//        for (File file : filesList)
+//            service.files().get(file.getId()).execute().getInputStream();
 
     @Override
     public List<String> getDocumentIdList() {
         return filesList.stream()
-                .map(file -> removeFileExtension(file.getName()))
+                .map(file -> removeFileExtension(file.getTitle()))
                 .collect(Collectors.toList());
     }
 
     @Override
     public Document getDocumentNameContent(String queryDocumentName) {
+
         Optional<String> content = filesList.stream()
-                .filter(file -> removeFileExtension(file.getName()).equals(queryDocumentName))
+                .filter(file -> removeFileExtension(file.getTitle()).equals(queryDocumentName))
                 .map(this::readFileContent)
                 .findAny()
                 .map(Object::toString);
@@ -74,7 +106,7 @@ public class DocumentService implements DocumentServiceInterface {
         String[] splitKeyPhrase = keyPhrase.split(" ");
 
         for (File file : filesList) {
-            String fileName = removeFileExtension(file.getName());
+            String fileName = removeFileExtension(file.getTitle());
             content = readFileContent(file).toString();
             for (int ngramLength = 1; ngramLength <= splitKeyPhrase.length; ngramLength++) {
                 for (String ngram : getNgramList(ngramLength, splitKeyPhrase)) {
@@ -97,17 +129,22 @@ public class DocumentService implements DocumentServiceInterface {
     }
 
     //reads and saves file content
-    private StringBuilder readFileContent(File file) {
-        StringBuilder content = new StringBuilder();
-
-        try (Stream<String> stream = Files.lines(Paths.get(file.getPath()))) {
-            stream.forEach(content::append);
-        } catch (IOException e) {
-            log.error("Error occurred in readFileContent method while reading file "
-                    + file.getName() + " content", e);
+    private InputStream readFileContent(File file) {
+        if (file.getDownloadUrl() != null && file.getDownloadUrl().length() > 0) {
+            try {
+                HttpResponse resp =
+                        service.getRequestFactory().buildGetRequest(new GenericUrl(file.getDownloadUrl()))
+                                .execute();
+                return resp.getContent();
+            } catch (IOException e) {
+                // An error occurred.
+                e.printStackTrace();
+                return null;
+            }
+        } else {
+            // The file doesn't have any content stored on Drive.
+            return null;
         }
-
-        return content;
     }
 
     //removes extensions from file names

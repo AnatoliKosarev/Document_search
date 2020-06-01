@@ -2,6 +2,7 @@ package javatest.document_search.rest;
 
 import javatest.document_search.entity.Document;
 import javatest.document_search.services.DocumentServiceInterface;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
